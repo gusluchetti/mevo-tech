@@ -16,13 +16,17 @@ export class OrderService {
 		res: Response,
 	) => {
 		const newOrderParams = req.body;
-		const { buyer_id, items: newItems } = newOrderParams;
+		const { buyer_id: buyerId, items: newItems } = newOrderParams;
 
-		const [newOrder] = await db.insert(orders).values({ buyer_id }).returning();
+		const [newOrder] = await db
+			.insert(orders)
+			.values({ buyer_id: buyerId })
+			.returning();
 		if (!newOrder) {
 			res.status(500).send("pedido não pode ser salvo");
 			return;
 		}
+
 		const [joinedOrder] = await db
 			.select()
 			.from(orders)
@@ -32,6 +36,7 @@ export class OrderService {
 			res.status(500).send("pedido não pode ser salvo");
 			return;
 		}
+
 		const itemsResult = await db
 			.insert(items)
 			.values(newItems.map((i) => ({ ...i, order_id: newOrder.id })))
