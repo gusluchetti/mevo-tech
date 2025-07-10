@@ -13,12 +13,12 @@ export const NewOrderParam = z.object({
   }))
 })
 
-const OrderStatusSchema = z.union([
-  z.literal('pendente'),
-  z.literal('faturado'),
-  z.literal('cancelado'),
-  z.literal('na entrega'),
-  z.literal('entregue'),
+const OrderStatusSchema = z.enum([
+  'pendente',
+  'faturado',
+  'cancelado',
+  'na entrega',
+  'entregue',
 ])
 
 export const UpdateOrderParam = z.object({
