@@ -53,7 +53,7 @@ export class OrderService {
 				quantity: i.quantity,
 				price: i.price,
 			})),
-			status: joinedOrder.orders.status,
+			status: joinedOrder.orders.status ?? "pendente",
 		};
 
 		res.json(response);
@@ -127,7 +127,7 @@ export class OrderService {
 				cpf: completeOrder.buyers.cpf,
 			},
 			items: completeOrder.items,
-			status: completeOrder.status,
+			status: completeOrder.status ?? "pendente",
 		};
 		res.json(response);
 	};
