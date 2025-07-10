@@ -36,3 +36,11 @@ export const items = sqliteTable("items", {
 	quantity: integer().notNull(),
 	price: integer().notNull(),
 });
+
+export const itemRelations = relations(items, ({ one }) => ({
+	orders: one(orders, {
+		fields: [items.order_id],
+		references: [orders.id],
+		relationName: "order_items",
+	}),
+}));
