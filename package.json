@@ -3,6 +3,9 @@
 	"module": "index.ts",
 	"type": "module",
 	"private": true,
+	"scripts": {
+		"seed": "bun ./db/seed.ts"
+	},
 	"devDependencies": {
 		"@biomejs/biome": "2.1.1",
 		"@types/better-sqlite3": "^7.6.13",
