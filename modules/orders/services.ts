@@ -18,19 +18,18 @@ export class OrderService {
 		const newOrderParams = req.body;
 		const { buyer_id, items: newItems } = newOrderParams;
 
-		const newOrder = await db
-			.insert(orders)
-			.values({ buyer_id })
-			.returning()
-			.get();
-		const joinedOrder = await db
+		const [newOrder] = await db.insert(orders).values({ buyer_id }).returning();
+		if (!newOrder) {
+			res.status(500).send("pedido não pode ser salvo");
+			return;
+		}
+		const [joinedOrder] = await db
 			.select()
 			.from(orders)
 			.innerJoin(buyers, eq(orders.buyer_id, buyers.id))
-			.where(eq(orders.id, newOrder.id))
-			.get();
+			.where(eq(orders.id, newOrder.id));
 		if (!joinedOrder) {
-			res.send("pedido não pode ser salvo");
+			res.status(500).send("pedido não pode ser salvo");
 			return;
 		}
 		const itemsResult = await db
