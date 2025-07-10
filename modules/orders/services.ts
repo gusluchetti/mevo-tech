@@ -3,95 +3,128 @@ import type { CompleteOrder } from "../../db/order.models";
 import type { NewOrderParam, OrderIdParam, UpdateOrderParam } from "./dto";
 import { db } from "../../db";
 import { requestMotoboy } from "../external";
-import type { TypedRequestBody, TypedRequestParams } from "zod-express-middleware";
+import type {
+	TypedRequestBody,
+	TypedRequestParams,
+} from "zod-express-middleware";
+import { eq } from "drizzle-orm";
+import { buyers, orders, items } from "../../db/schema";
 
 export class OrderService {
-  createOrder = (req: TypedRequestBody<typeof NewOrderParam>, res: Response) => {
-    const newOrderParams = req.body;
-    const { buyer_id, items } = newOrderParams;
+	createOrder = async (
+		req: TypedRequestBody<typeof NewOrderParam>,
+		res: Response,
+	) => {
+		const newOrderParams = req.body;
+		const { buyer_id, items: newItems } = newOrderParams;
 
-    const query = db.query('insert into orders(buyer_id) values ($buyer_id);')
-    query.all({ $buyer_id: buyer_id })
+		const newOrder = await db
+			.insert(orders)
+			.values({ buyer_id })
+			.returning()
+			.get();
+		const joinedOrder = await db
+			.select()
+			.from(orders)
+			.innerJoin(buyers, eq(orders.buyer_id, buyers.id))
+			.where(eq(orders.id, newOrder.id))
+			.get();
+		if (!joinedOrder) {
+			res.send("pedido não pode ser salvo");
+			return;
+		}
+		const itemsResult = await db
+			.insert(items)
+			.values(newItems.map((i) => ({ ...i, order_id: newOrder.id })))
+			.returning();
 
-    const joinedQuery = db.query('select * from orders join buyers on orders.buyer_id = buyers.id;')
-    const joinedOrders = joinedQuery.all()
-    const singleJoinedOrder: any = joinedOrders[0]
+		const response: CompleteOrder = {
+			id: joinedOrder.orders.id,
+			buyer: {
+				name: joinedOrder.buyers.name,
+				cpf: joinedOrder.buyers.cpf,
+			},
+			items: itemsResult.map((i) => ({
+				name: i.name,
+				quantity: i.quantity,
+				price: i.price,
+			})),
+			status: joinedOrder.orders.status,
+		};
 
-    let newItems: any[] = []
+		res.json(response);
+	};
 
-    items.forEach(item => {
-      const query = db.query(`
-      insert into items(order_id, name, quantity, price)
-      values (?1, ?2, ?3, ?4);`)
-      const newItem = query.all(singleJoinedOrder?.id, item.name, item.quantity, item.price)
-      newItems.push(newItem)
-    })
+	updateOrder = async (
+		req: TypedRequestParams<typeof UpdateOrderParam>,
+		res: Response,
+	) => {
+		const { id: orderId, status: newStatus } = req.params;
+		const existingOrder = await db
+			.select()
+			.from(orders)
+			.where(eq(orders.id, orderId))
+			.get();
+		if (existingOrder?.status === "entregue") {
+			res
+				.status(204)
+				.send(`Status == "entregue", nenhuma modificação permitida`);
+			return;
+		}
 
-    const response: CompleteOrder = {
-      id: singleJoinedOrder.id,
-      buyer: {
-        name: singleJoinedOrder.name,
-        cpf: singleJoinedOrder.cpf,
-      },
-      items: newItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
-      status: singleJoinedOrder.status
-    }
+		if (newStatus === "faturado") {
+			try {
+				await requestMotoboy(orderId.toString());
+			} catch (error) {
+				console.error(error);
+				res.status(400).send("Agendamento da entrega falhou.");
+				return;
+			}
+		}
 
-    res.json(response);
-  }
+		const updateOrder = await db
+			.update(orders)
+			.set({ status: newStatus })
+			.where(eq(orders.id, orderId))
+			.returning()
+			.get();
 
-  updateOrder = async (req: TypedRequestParams<typeof UpdateOrderParam>, res: Response) => {
-    const { id: orderId, status: newStatus } = req.params;
-    const orders: any[] = db.query('select * from orders where orders.id = $id;').all({
-      $id: orderId
-    })
-    const order = orders[0]
-    if (order.status === "entregue") {
-      res.status(204).send(`Status == "entregue", nenhuma modificação permitida`)
-      return;
-    }
+		res.json(updateOrder);
+	};
 
-    if (newStatus === "faturado") {
-      try {
-        await requestMotoboy(orderId.toString())
-      } catch (error) {
-        res.status(400).send('Agendamento da entrega falhou.')
-        return;
-      }
-    }
+	getOrders = async (_: Request, res: Response) => {
+		const orderList = await db.select().from(orders);
+		res.json(orderList);
+	};
 
-    const updateOrder = db.query('update orders set status = $status where id = $id').all({
-      $id: orderId!,
-      $status: newStatus!
-    })
+	getOrderById = async (
+		req: TypedRequestParams<typeof OrderIdParam>,
+		res: Response,
+	) => {
+		const orderId = req.params.id;
 
-    res.json(updateOrder);
-  }
+		const completeOrder = await db.query.orders.findFirst({
+			with: {
+				buyers: true,
+				items: true,
+			},
+			where: eq(orders.id, orderId),
+		});
 
-  getOrders = (_: Request, res: Response) => {
-    const query = db.query('select * from orders;')
-    const result = query.all();
+		if (!completeOrder) {
+			res.status(404).send("nenhum pedido com esse id encontrado");
+			return;
+		}
 
-    res.json(result);
-  }
-
-  getOrderById = (req: TypedRequestParams<typeof OrderIdParam>, res: Response) => {
-    const orderId = req.params.id;
-    const joinedOrders = db.query('select * from orders join buyers on orders.buyer_id = buyers.id where orders.id = $id;').all({
-      $id: orderId!
-    })
-    const singleJoinedOrder: any = joinedOrders[0]
-    const orderItems: any[] = db.query('select * from items where order_id = $order_id').all({ $order_id: orderId! })
-
-    const response: CompleteOrder = {
-      id: singleJoinedOrder.id,
-      buyer: {
-        name: singleJoinedOrder.name,
-        cpf: singleJoinedOrder.cpf,
-      },
-      items: orderItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
-      status: singleJoinedOrder.status
-    }
-    res.json(response);
-  }
+		const response: CompleteOrder = {
+			id: completeOrder.id,
+			buyer: {
+				name: completeOrder.buyers.name,
+				cpf: completeOrder.buyers.cpf,
+			},
+			items: completeOrder.items,
+			status: completeOrder.status,
+		};
+		res.json(response);
+	};
 }
