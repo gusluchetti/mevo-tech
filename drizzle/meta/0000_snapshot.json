@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "53a1c2a8-377e-473f-be43-43448db0bec5",
+  "id": "4a0b68ff-1411-4921-9330-ee4c1d755fa6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "buyers": {
@@ -115,7 +115,7 @@
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false,
           "default": "'pendente'"
         }

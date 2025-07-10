@@ -16,6 +16,6 @@ CREATE TABLE `items` (
 CREATE TABLE `orders` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`buyer_id` integer NOT NULL,
-	`status` text DEFAULT 'pendente' NOT NULL,
+	`status` text DEFAULT 'pendente',
 	FOREIGN KEY (`buyer_id`) REFERENCES `buyers`(`id`) ON UPDATE no action ON DELETE no action
 );
