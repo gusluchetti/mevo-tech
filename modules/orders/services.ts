@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
-import type { CompleteOrder, OrderStatus } from "../../db/order.models";
-import type { NewOrderParams } from "./dto";
+import type { CompleteOrder } from "../../db/order.models";
+import type { NewOrderParam, OrderIdParam, UpdateOrderParam } from "./dto";
 import { db } from "../../db";
 import { requestMotoboy } from "../external";
+import type { TypedRequestBody, TypedRequestParams } from "zod-express-middleware";
 
 export class OrderService {
-  createOrder = (req: Request, res: Response) => {
-    const newOrderParams: NewOrderParams = req.body;
+  createOrder = (req: TypedRequestBody<typeof NewOrderParam>, res: Response) => {
+    const newOrderParams = req.body;
     const { buyer_id, items } = newOrderParams;
 
     const query = db.query('insert into orders(buyer_id) values ($buyer_id);')
@@ -39,12 +40,8 @@ export class OrderService {
     res.json(response);
   }
 
-  updateOrder = async (req: Request, res: Response) => {
+  updateOrder = async (req: TypedRequestParams<typeof UpdateOrderParam>, res: Response) => {
     const { id: orderId, status: newStatus } = req.params;
-    const isValidStatus = (x: any): x is OrderStatus => !!newStatus && newStatus?.includes(x);
-    if (!isValidStatus) {
-      res.status(400).json('Status inválido')
-    }
     const orders: any[] = db.query('select * from orders where orders.id = $id;').all({
       $id: orderId!
     })
@@ -71,14 +68,14 @@ export class OrderService {
     res.json(updateOrder);
   }
 
-  getOrders = (req: Request, res: Response) => {
+  getOrders = (_: Request, res: Response) => {
     const query = db.query('select * from orders;')
     const result = query.all();
 
     res.json(result);
   }
 
-  getOrderById = (req: Request, res: Response) => {
+  getOrderById = (req: TypedRequestParams<typeof OrderIdParam>, res: Response) => {
     const orderId = req.params.id;
     const joinedOrders = db.query('select * from orders join buyers on orders.buyer_id = buyers.id where orders.id = $id;').all({
       $id: orderId!

@@ -1,6 +1,27 @@
-import type { FilteredItem } from "../../db/item.models";
+import z from "zod";
 
-export type NewOrderParams = {
-  buyer_id: number,
-  items: FilteredItem[];
-}
+export const OrderIdParam = z.object({
+  id: z.coerce.number()
+})
+
+export const NewOrderParam = z.object({
+  buyer_id: z.number(),
+  items: z.array(z.object({
+    name: z.string(),
+    quantity: z.number(),
+    price: z.number()
+  }))
+})
+
+const OrderStatusSchema = z.union([
+  z.literal('pendente'),
+  z.literal('faturado'),
+  z.literal('cancelado'),
+  z.literal('na entrega'),
+  z.literal('entregue'),
+])
+
+export const UpdateOrderParam = z.object({
+  id: z.coerce.number(),
+  status: OrderStatusSchema
+})
