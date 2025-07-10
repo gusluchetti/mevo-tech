@@ -14,9 +14,7 @@ export const orders = sqliteTable("orders", {
 		.notNull(),
 	status: text({
 		enum: ["pendente", "faturado", "cancelado", "na entrega", "entregue"],
-	})
-		.notNull()
-		.default("pendente"),
+	}).default("pendente"),
 });
 
 export const orderRelations = relations(orders, ({ one, many }) => ({
