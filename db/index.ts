@@ -1,12 +1,7 @@
-import { Database } from "bun:sqlite";
-import { CREATE_BUYERS } from "./buyer.models";
-import { CREATE_ORDERS } from "./order.models";
-import { CREATE_ITEMS } from "./item.models";
+import { drizzle } from 'drizzle-orm/libsql';
+import * as schema from "./schema"
 
-export const db = new Database(":memory:");
+export const db = drizzle(process.env.DB_FILE_NAME!, { schema });
 
-db.run(CREATE_BUYERS);
-db.run(CREATE_ORDERS);
-db.run(CREATE_ITEMS);
-
-db.run(`insert into buyers (name, cpf) values ('gustavo', '123');`)
+// TODO: add seeding with drizzle
+// db.run(`insert into buyers (name, cpf) values ('gustavo', '123');`)
