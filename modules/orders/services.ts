@@ -43,7 +43,7 @@ export class OrderService {
   updateOrder = async (req: TypedRequestParams<typeof UpdateOrderParam>, res: Response) => {
     const { id: orderId, status: newStatus } = req.params;
     const orders: any[] = db.query('select * from orders where orders.id = $id;').all({
-      $id: orderId!
+      $id: orderId
     })
     const order = orders[0]
     if (order.status === "entregue") {
@@ -53,7 +53,7 @@ export class OrderService {
 
     if (newStatus === "faturado") {
       try {
-        const promise = await requestMotoboy(orderId!)
+        await requestMotoboy(orderId.toString())
       } catch (error) {
         res.status(400).send('Agendamento da entrega falhou.')
         return;
